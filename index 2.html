@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OPA Community Publisher</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0a0e14;
+    --surface: #111820;
+    --surface2: #1a2330;
+    --border: #1e2d3d;
+    --accent: #00d4ff;
+    --accent2: #00ff88;
+    --warn: #ff6b35;
+    --text: #c8d8e8;
+    --text-dim: #5a7a8a;
+    --text-bright: #e8f4ff;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  header {
+    position: relative;
+    z-index: 1;
+    padding: 20px 32px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: rgba(10,14,20,0.9);
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    width: 36px; height: 36px;
+    border: 2px solid var(--accent);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono); font-size: 12px; font-weight: 600;
+    color: var(--accent); letter-spacing: 0.5px;
+  }
+
+  header h1 { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--text-bright); letter-spacing: 1px; text-transform: uppercase; }
+  header span { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-left: auto; }
+
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent2); box-shadow: 0 0 8px var(--accent2); animation: pulse 2s infinite; margin-left: 8px; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+  .main {
+    position: relative; z-index: 1; flex: 1;
+    display: grid; grid-template-columns: 1fr 1fr;
+    max-width: 1400px; margin: 0 auto; width: 100%;
+    padding: 32px; gap: 24px;
+  }
+
+  @media (max-width: 900px) { .main { grid-template-columns: 1fr; } }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+
+  .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; background: var(--surface2); }
+  .panel-header .step { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--accent); display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 10px; color: var(--accent); flex-shrink: 0; }
+  .panel-header h2 { font-family: var(--mono); font-size: 11px; font-weight: 500; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; }
+
+  .panel-body { padding: 20px; flex: 1; display: flex; flex-direction: column; gap: 16px; }
+
+  textarea {
+    width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: var(--sans); font-size: 13px; line-height: 1.6;
+    padding: 14px; resize: none; flex: 1; min-height: 280px; outline: none; transition: border-color 0.2s;
+  }
+  textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(0,212,255,0.1); }
+  textarea::placeholder { color: var(--text-dim); }
+
+  .btn {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 12px 24px; border-radius: 8px;
+    font-family: var(--mono); font-size: 12px; font-weight: 500; letter-spacing: 0.5px;
+    cursor: pointer; border: none; transition: all 0.2s; text-transform: uppercase;
+  }
+  .btn-primary { background: var(--accent); color: #000; width: 100%; }
+  .btn-primary:hover { background: #00b8d9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-post { background: var(--accent2); color: #000; width: 100%; }
+  .btn-post:hover { background: #00e07a; transform: translateY(-1px); }
+  .btn-post:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-secondary { background: transparent; color: var(--text-dim); border: 1px solid var(--border); width: 100%; }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+
+  .field-group { display: flex; flex-direction: column; gap: 6px; }
+  .field-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 1.5px; text-transform: uppercase; }
+  .field-value { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 13px; color: var(--text-bright); line-height: 1.6; }
+  .field-value.title-field { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--accent); }
+  .field-value.body-field { min-height: 120px; font-size: 12px; line-height: 1.7; white-space: pre-wrap; max-height: 200px; overflow-y: auto; }
+
+  .tags-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 14px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; }
+  .tag { padding: 3px 10px; border-radius: 4px; font-family: var(--mono); font-size: 10px; font-weight: 500; border: 1px solid rgba(0,212,255,0.3); color: var(--accent); background: rgba(0,212,255,0.05); }
+
+  .space-match { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 14px; display: flex; align-items: flex-start; gap: 12px; }
+  .space-icon { width: 36px; height: 36px; background: rgba(0,255,136,0.1); border: 1px solid rgba(0,255,136,0.3); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .space-info h3 { font-family: var(--mono); font-size: 13px; color: var(--accent2); font-weight: 500; }
+  .space-info p { font-size: 11px; color: var(--text-dim); margin-top: 3px; line-height: 1.5; }
+
+  select { background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: var(--mono); font-size: 11px; padding: 6px 10px; outline: none; cursor: pointer; width: 100%; margin-top: 8px; }
+  select:focus { border-color: var(--accent); }
+
+  .loading-bar { height: 2px; background: var(--border); border-radius: 2px; overflow: hidden; position: relative; }
+  .loading-bar::after { content: ''; position: absolute; left: -40%; width: 40%; height: 100%; background: linear-gradient(90deg, transparent, var(--accent), transparent); animation: slide 1.2s infinite; }
+  @keyframes slide { to { left: 140%; } }
+
+  .status-msg { padding: 10px 14px; border-radius: 8px; font-family: var(--mono); font-size: 11px; line-height: 1.5; display: flex; align-items: flex-start; gap: 8px; }
+  .status-msg.info { background: rgba(0,212,255,0.05); border: 1px solid rgba(0,212,255,0.2); color: var(--accent); }
+  .status-msg.success { background: rgba(0,255,136,0.05); border: 1px solid rgba(0,255,136,0.2); color: var(--accent2); }
+  .status-msg.error { background: rgba(255,107,53,0.05); border: 1px solid rgba(255,107,53,0.2); color: var(--warn); }
+
+  .empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; opacity: 0.3; padding: 40px; text-align: center; }
+  .empty-state p { font-family: var(--mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.5px; }
+
+  .discussion-q { background: rgba(0,212,255,0.03); border: 1px solid rgba(0,212,255,0.15); border-left: 3px solid var(--accent); border-radius: 0 8px 8px 0; padding: 12px 14px; font-size: 13px; color: var(--text); font-style: italic; line-height: 1.6; }
+
+  .divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  .spinner { width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.2); border-top-color: #000; border-radius: 50%; animation: spin 0.6s linear infinite; flex-shrink: 0; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .success-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+  .success-overlay.show { opacity: 1; pointer-events: all; }
+  .success-card { background: var(--surface); border: 1px solid var(--accent2); border-radius: 16px; padding: 40px; text-align: center; max-width: 420px; width: 90%; transform: scale(0.9); transition: transform 0.3s; box-shadow: 0 0 60px rgba(0,255,136,0.1); }
+  .success-overlay.show .success-card { transform: scale(1); }
+  .success-card .checkmark { font-size: 48px; margin-bottom: 16px; }
+  .success-card h2 { font-family: var(--mono); font-size: 16px; color: var(--accent2); margin-bottom: 8px; }
+  .success-card p { font-size: 13px; color: var(--text-dim); line-height: 1.6; margin-bottom: 24px; }
+  .success-card a { color: var(--accent); text-decoration: none; font-family: var(--mono); font-size: 12px; }
+
+  .char-count { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-align: right; margin-top: -10px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">OPA</div>
+  <h1>Community Publisher</h1>
+  <span>opacommunity.com</span>
+  <div class="status-dot"></div>
+</header>
+
+<div class="main">
+  <div class="panel">
+    <div class="panel-header">
+      <div class="step">1</div>
+      <h2>LinkedIn Post Input</h2>
+    </div>
+    <div class="panel-body">
+      <textarea id="linkedinPost" placeholder="Paste your LinkedIn post here...
+
+The tool will:
+• Convert it into a community discussion format
+• Auto-select the best space based on content
+• Let you preview and confirm before posting"></textarea>
+      <div class="char-count" id="charCount">0 characters</div>
+      <button class="btn btn-primary" id="convertBtn" onclick="convertPost()">
+        <span id="convertBtnText">Convert Post</span>
+      </button>
+      <div id="convertStatus"></div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="step">2</div>
+      <h2>Preview &amp; Publish</h2>
+    </div>
+    <div class="panel-body" id="outputPanel">
+      <div class="empty-state" id="emptyState">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+        <p>Converted post will appear here</p>
+      </div>
+
+      <div id="convertedOutput" style="display:none; flex-direction:column; gap:14px; flex:1;">
+        <div class="field-group">
+          <div class="field-label">Title</div>
+          <div class="field-value title-field" id="postTitle"></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Body</div>
+          <div class="field-value body-field" id="postBody"></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Discussion Question</div>
+          <div class="discussion-q" id="postQuestion"></div>
+        </div>
+        <div class="field-group">
+          <div class="field-label">Tags</div>
+          <div class="tags-row" id="postTags"></div>
+        </div>
+        <div class="divider"></div>
+        <div class="field-group">
+          <div class="field-label">Target Space</div>
+          <div class="space-match">
+            <div class="space-icon" id="spaceIcon">📂</div>
+            <div class="space-info" style="flex:1">
+              <h3 id="spaceName">—</h3>
+              <p id="spaceReason">—</p>
+              <select id="spaceOverride" onchange="overrideSpace()">
+                <option value="">Override space...</option>
+                <option value="6">System Architecture</option>
+                <option value="7">Migration &amp; Modernizations</option>
+                <option value="10">Starter Kit</option>
+                <option value="11">Control Software &amp; Portability</option>
+                <option value="25">Cybersecurity</option>
+                <option value="45">Economics &amp; ROI</option>
+                <option value="48">Executive Guides</option>
+                <option value="52">Events &amp; Webinars</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div id="postStatus"></div>
+        <button class="btn btn-post" id="postBtn" onclick="publishPost()">
+          <span id="postBtnText">Publish to OPA Community</span>
+        </button>
+        <button class="btn btn-secondary" onclick="resetAll()">Start Over</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="success-overlay" id="successOverlay">
+  <div class="success-card">
+    <div class="checkmark">✓</div>
+    <h2>Post Published</h2>
+    <p id="successMsg">Your post is now live on OPA Community.</p>
+    <a id="successLink" href="#" target="_blank">View post →</a>
+    <br><br>
+    <button class="btn btn-secondary" onclick="closeSuccess()" style="width:auto; padding: 8px 20px;">Close</button>
+  </div>
+</div>
+
+<script>
+  const SPACES = {
+    6:  { title: 'System Architecture',            icon: '🏗️', slug: 'sys-architecture' },
+    7:  { title: 'Migration & Modernizations',     icon: '🔄', slug: 'pathways' },
+    10: { title: 'Starter Kit',                    icon: '📦', slug: 'starter-kit' },
+    11: { title: 'Control Software & Portability', icon: '💾', slug: 'portability' },
+    25: { title: 'Cybersecurity',                  icon: '🔒', slug: 'cyber' },
+    45: { title: 'Economics & ROI',                icon: '💰', slug: 'economicsroi' },
+    48: { title: 'Executive Guides',               icon: '🎯', slug: 'executiveguides' },
+    52: { title: 'Events & Webinars',              icon: '📅', slug: 'eventswebinars' }
+  };
+
+  let converted = null;
+  let selectedSpaceId = null;
+  let jwtToken = null;
+
+  document.getElementById('linkedinPost').addEventListener('input', function() {
+    document.getElementById('charCount').textContent = this.value.length + ' characters';
+  });
+
+  function setStatus(id, type, msg) {
+    const el = document.getElementById(id);
+    if (!msg) { el.innerHTML = ''; return; }
+    el.innerHTML = `<div class="status-msg ${type}">${msg}</div>`;
+  }
+
+  async function callProxy(action, payload) {
+    const res = await fetch('https://icelcghcpjukjgablttc.supabase.co/functions/v1/proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImljZWxjZ2hjcGp1a2pnYWJsdHRjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU2ODI0OTcsImV4cCI6MjA5MTI1ODQ5N30.U180rSNWvwRI_qqYVqHQGloOOAW646_HzvEP0pYaMms' },
+      body: JSON.stringify({ action, payload })
+    });
+    return res.json();
+  }
+
+  async function convertPost() {
+    const post = document.getElementById('linkedinPost').value.trim();
+    if (!post) { setStatus('convertStatus', 'error', '⚠ Paste a LinkedIn post first.'); return; }
+
+    const btn = document.getElementById('convertBtn');
+    btn.disabled = true;
+    document.getElementById('convertBtnText').innerHTML = '<div class="spinner"></div>&nbsp;Converting...';
+    setStatus('convertStatus', 'info', '<div class="loading-bar"></div>');
+
+    try {
+      const spaceList = Object.entries(SPACES).map(([id, s]) => `${id}: ${s.title}`).join('\n');
+
+      const prompt = `You are converting a LinkedIn post into a community discussion post for opacommunity.com, focused on Open Process Automation (OPA/O-PAS).
+
+LINKEDIN POST:
+${post}
+
+AVAILABLE SPACES:
+${spaceList}
+
+Return ONLY valid JSON, no markdown, no backticks:
+{
+  "title": "Short sharp title max 12 words no fluff",
+  "body": "Converted body. Keep core insight. Break into short paragraphs. Remove hashtags. Add 1-2 **bold statements**. Make conversational not broadcast. End naturally.",
+  "tags": ["3-5 tags ONLY from: OPA, Industrial Automation, OT, Architecture, AI, Digital Transformation, Control Systems"],
+  "discussion_question": "One strong question provoking opinion or experience. Not yes/no.",
+  "space_id": <best matching space ID as a number>,
+  "space_reason": "One sentence why this space was chosen"
+}`;
+
+      const data = await callProxy('convert', { prompt });
+
+      if (data.error) throw new Error(data.error);
+
+      const raw = data.content[0].text.trim();
+      const clean = raw.replace(/\`\`\`json|\`\`\`/g, '').trim();
+      converted = JSON.parse(clean);
+
+      document.getElementById('postTitle').textContent = converted.title;
+      document.getElementById('postBody').textContent = converted.body;
+      document.getElementById('postQuestion').textContent = converted.discussion_question;
+
+      const tagsEl = document.getElementById('postTags');
+      tagsEl.innerHTML = '';
+      (converted.tags || []).forEach(t => {
+        const span = document.createElement('span');
+        span.className = 'tag';
+        span.textContent = t;
+        tagsEl.appendChild(span);
+      });
+
+      selectedSpaceId = converted.space_id;
+      const space = SPACES[selectedSpaceId];
+      if (space) {
+        document.getElementById('spaceIcon').textContent = space.icon;
+        document.getElementById('spaceName').textContent = space.title;
+        document.getElementById('spaceReason').textContent = converted.space_reason || '';
+      }
+
+      document.getElementById('emptyState').style.display = 'none';
+      document.getElementById('convertedOutput').style.display = 'flex';
+      setStatus('convertStatus', 'success', '✓ Converted. Review and publish below.');
+
+    } catch (err) {
+      setStatus('convertStatus', 'error', '⚠ ' + err.message);
+    }
+
+    btn.disabled = false;
+    document.getElementById('convertBtnText').textContent = 'Convert Post';
+  }
+
+  function overrideSpace() {
+    const sel = document.getElementById('spaceOverride');
+    const val = parseInt(sel.value);
+    if (!val) return;
+    selectedSpaceId = val;
+    const space = SPACES[val];
+    document.getElementById('spaceIcon').textContent = space.icon;
+    document.getElementById('spaceName').textContent = space.title;
+    document.getElementById('spaceReason').textContent = 'Manually selected';
+    sel.value = '';
+  }
+
+  async function publishPost() {
+    if (!converted || !selectedSpaceId) return;
+
+    const btn = document.getElementById('postBtn');
+    btn.disabled = true;
+    document.getElementById('postBtnText').innerHTML = '<div class="spinner"></div>&nbsp;Authenticating...';
+    setStatus('postStatus', 'info', '<div class="loading-bar"></div>');
+
+    try {
+      if (!jwtToken) {
+        const authData = await callProxy('auth', {});
+        if (!authData.token) throw new Error(authData.message || 'Authentication failed');
+        jwtToken = authData.token;
+      }
+
+      document.getElementById('postBtnText').innerHTML = '<div class="spinner"></div>&nbsp;Publishing...';
+
+      const fullBody = converted.body + '\n\n---\n\n**Discussion:** ' + converted.discussion_question;
+
+      const postData = await callProxy('post', {
+        token: jwtToken,
+        postData: {
+          title: converted.title,
+          message: fullBody,
+          space_id: selectedSpaceId,
+          status: 'published',
+          type: 'text',
+          privacy: 'public'
+        }
+      });
+
+      const feed = postData.feed || postData;
+      if (feed && (feed.permalink || feed.id)) {
+        const link = feed.permalink || `https://opacommunity.com/portal/space/${SPACES[selectedSpaceId].slug}/post/${feed.slug || feed.id}`;
+        document.getElementById('successMsg').textContent = `Published to "${SPACES[selectedSpaceId].title}" space.`;
+        document.getElementById('successLink').href = link;
+        document.getElementById('successOverlay').classList.add('show');
+        setStatus('postStatus', 'success', '✓ Post published successfully.');
+      } else {
+        throw new Error(postData.message || JSON.stringify(postData).substring(0, 100));
+      }
+
+    } catch (err) {
+      if (err.message && err.message.toLowerCase().includes('expired')) {
+        jwtToken = null;
+        setStatus('postStatus', 'info', 'Session expired — click Publish again.');
+      } else {
+        setStatus('postStatus', 'error', '⚠ ' + err.message);
+      }
+    }
+
+    btn.disabled = false;
+    document.getElementById('postBtnText').textContent = 'Publish to OPA Community';
+  }
+
+  function resetAll() {
+    converted = null; selectedSpaceId = null;
+    document.getElementById('linkedinPost').value = '';
+    document.getElementById('charCount').textContent = '0 characters';
+    document.getElementById('emptyState').style.display = 'flex';
+    document.getElementById('convertedOutput').style.display = 'none';
+    setStatus('convertStatus', '', '');
+    setStatus('postStatus', '', '');
+  }
+
+  function closeSuccess() {
+    document.getElementById('successOverlay').classList.remove('show');
+    resetAll();
+  }
+</script>
+</body>
+</html>
